@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Título + ícono -->
+    <title>Sistema de Notificaciones Web</title>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- Meta tags importantes para PWA y notificaciones -->
+    <meta name="theme-color" content="#667eea" />
+    <meta name="description" content="Sistema de notificaciones en tiempo real con Web Push" />
+    
+    <!-- Evitar que el navegador haga zoom raro en móviles al enfocar inputs -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    
+  </head>
+
+  <body class="antialiased">
+    <div id="root"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Registro del Service Worker - con mejor manejo -->
+    <script>
+      // Solo intentar registrar si el navegador lo soporta
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          const swUrl = '/service-worker.js';
+
+          navigator.serviceWorker
+            .register(swUrl, { scope: '/' })
+            .then((registration) => {
+              console.log('Service Worker registrado con éxito:', registration.scope);
+
+              // Opcional: escuchar actualizaciones
+              registration.addEventListener('updatefound', () => {
+                console.log('Nueva versión del Service Worker detectada');
+              });
+            })
+            .catch((error) => {
+              console.error('Error al registrar el Service Worker:', error);
+            });
+        });
+      } else {
+        console.warn('Service Workers no soportados en este navegador');
+      }
+
+      // Opcional: mostrar mensaje si el usuario está offline
+      window.addEventListener('online',  () => console.log('Conexión restablecida'));
+      window.addEventListener('offline', () => console.log('Sin conexión a internet'));
+    </script>
+  </body>
+</html>
