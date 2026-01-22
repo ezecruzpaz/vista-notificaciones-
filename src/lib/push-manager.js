@@ -7,7 +7,7 @@ const getApiUrl = () => {
   const isProd = window.location.hostname.includes('vercel.app') || 
                  !window.location.hostname.includes('localhost');
   return isProd 
-    ? //'https://notificaciones-yyaj.onrender.com'
+    ? 'https://notifications-red.vercel.app'
     : 'http://localhost:3000';
 };
 
