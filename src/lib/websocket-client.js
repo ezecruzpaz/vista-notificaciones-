@@ -15,7 +15,7 @@ class WebSocketClient {
     const isProd = window.location.hostname.includes('vercel.app') || 
                    !window.location.hostname.includes('localhost');
     return isProd 
-      ? 'wss://notificaciones-yyaj.onrender.com'
+      ? 'wss://notifications-mv76.onrender.com'
       : 'ws://localhost:10000';
   }
 

@@ -42,7 +42,7 @@ export default function App() {
     localStorage.setItem('currentUser', username); // ← ¡AGREGA ESTA LÍNEA!
 
     // Crear conexión WebSocket
-    const websocket = new WebSocket('wss://notifications-red.vercel.app');
+    const websocket = new WebSocket('wss://notifications-mv76.onrender.com');
 
     websocket.onopen = () => {
       console.log('✅ WebSocket conectado al servidor');
@@ -142,7 +142,7 @@ export default function App() {
       setNotificationsEnabled(savedEnabled);
 
       // Conectar al WebSocket
-      const websocket = new WebSocket('wss://notifications-red.vercel.app');
+      const websocket = new WebSocket('wss://notifications-mv76.onrender.com');
 
       websocket.onopen = () => {
         console.log('✅ WebSocket conectado (sesión restaurada)');
@@ -236,7 +236,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch('https://notifications-red.vercel.app/api/simulate-task', {
+      const response = await fetch('https://notifications-mv76.onrender.com/api/simulate-task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -424,10 +424,6 @@ export default function App() {
             </button>
           </div>
         </section>
-
-
-
-
       </div>
     </div>
   );
