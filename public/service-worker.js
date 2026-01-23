@@ -4,17 +4,17 @@ const CACHE_NAME = 'notifications-app-v1';
 
 // Instalación del Service Worker
 self.addEventListener('install', (event) => {
-  console.log('[SW] Instalando Service Worker...');
+  //console.log('[SW] Instalando Service Worker...');
   
   // MODO DESARROLLO: Caché mínimo, solo para que el SW funcione
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Cache abierto (modo mínimo)');
+      //console.log('[SW] Cache abierto (modo mínimo)');
       // Solo cachear el service-worker mismo para que funcione
       return cache.addAll([
         '/service-worker.js'
       ]).catch(err => {
-        console.error('[SW] Error precacheando:', err);
+        //console.error('[SW] Error precacheando:', err);
       });
     })
   );
@@ -25,14 +25,14 @@ self.addEventListener('install', (event) => {
 
 // Activación del Service Worker
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activando Service Worker...');
+  //console.log('[SW] Activando Service Worker...');
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('[SW] Eliminando cache antigua:', cacheName);
+            //console.log('[SW] Eliminando cache antigua:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -78,7 +78,7 @@ self.addEventListener('fetch', (event) => {
 
 // Escuchar eventos push del servidor
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push recibido:', event);
+  //console.log('[SW] Push recibido:', event);
   
   let notificationData = {
     title: '🔔 Nueva notificación',
@@ -115,7 +115,7 @@ self.addEventListener('push', (event) => {
         ]
       };
     } catch (error) {
-      console.error('[SW] Error parseando datos del push:', error);
+      //console.error('[SW] Error parseando datos del push:', error);
     }
   }
   
@@ -136,7 +136,7 @@ self.addEventListener('push', (event) => {
 
 // Manejar click en la notificación
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notificación clickeada:', event.action);
+  //console.log('[SW] Notificación clickeada:', event.action);
   
   event.notification.close(); // Cerrar la notificación
   
@@ -171,19 +171,19 @@ self.addEventListener('notificationclick', (event) => {
 
 // Manejar cierre de notificaciones
 self.addEventListener('notificationclose', (event) => {
-  console.log('[SW] Notificación cerrada:', event.notification.tag);
+ // console.log('[SW] Notificación cerrada:', event.notification.tag);
 });
 
 // Sincronización en segundo plano (opcional - para funcionalidad avanzada)
 self.addEventListener('sync', (event) => {
-  console.log('[SW] Sincronización en segundo plano:', event.tag);
+ // console.log('[SW] Sincronización en segundo plano:', event.tag);
   
   if (event.tag === 'sync-notifications') {
     event.waitUntil(
       // Aquí podrías sincronizar datos con el servidor
-      console.log('[SW] Sincronizando...')
+      //console.log('[SW] Sincronizando...')
     );
   }
 });
 
-console.log('[SW] Service Worker cargado correctamente');
+//console.log('[SW] Service Worker cargado correctamente');

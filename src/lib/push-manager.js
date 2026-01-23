@@ -33,14 +33,14 @@ async function registerServiceWorker() {
   
   try {
     const registration = await navigator.serviceWorker.register('/service-worker.js');
-    console.log('Service Worker registrado:', registration);
+    //console.log('Service Worker registrado:', registration);
     
     await navigator.serviceWorker.ready;
-    console.log('Service Worker activo');
+    //console.log('Service Worker activo');
     
     return registration;
   } catch (error) {
-    console.error('Error registrando Service Worker:', error);
+    //console.error('Error registrando Service Worker:', error);
     throw error;
   }
 }
@@ -54,7 +54,7 @@ async function subscribeToPush(registration) {
     let subscription = await registration.pushManager.getSubscription();
     
     if (subscription) {
-      console.log('Ya existe una suscripción push');
+      //console.log('Ya existe una suscripción push');
       return subscription;
     }
     
@@ -65,10 +65,10 @@ async function subscribeToPush(registration) {
       applicationServerKey: applicationServerKey
     });
     
-    console.log('Suscripción push creada:', subscription);
+    //console.log('Suscripción push creada:', subscription);
     return subscription;
   } catch (error) {
-    console.error('Error suscribiéndose a push:', error);
+    //console.error('Error suscribiéndose a push:', error);
     throw error;
   }
 }
@@ -89,13 +89,13 @@ async function sendSubscriptionToServer(username, subscription) {
     const data = await response.json();
     
     if (data.success) {
-      console.log('Suscripción guardada en el servidor');
+     // console.log('Suscripción guardada en el servidor');
       return true;
     } else {
       throw new Error('Error guardando suscripción');
     }
   } catch (error) {
-    console.error('Error enviando suscripción al servidor:', error);
+    //console.error('Error enviando suscripción al servidor:', error);
     throw error;
   }
 }
@@ -106,10 +106,10 @@ export async function registerServiceWorkerAndSubscribe(username) {
     const subscription = await subscribeToPush(registration);
     await sendSubscriptionToServer(username, subscription);
     
-    console.log('Proceso completo: SW registrado y suscrito a push');
+    //console.log('Proceso completo: SW registrado y suscrito a push');
     return true;
   } catch (error) {
-    console.error('Error en el proceso de registro:', error);
+    //console.error('Error en el proceso de registro:', error);
     throw error;
   }
 }
@@ -133,16 +133,16 @@ export async function unsubscribeFromPush() {
           body: JSON.stringify({ endpoint: subscription.endpoint })
         });
       } catch (err) {
-        console.warn('No se pudo notificar al servidor de desuscripción:', err);
+        //console.warn('No se pudo notificar al servidor de desuscripción:', err);
       }
       
-      console.log('Desuscrito de push notifications');
+      //console.log('Desuscrito de push notifications');
       return true;
     }
     
     return false;
   } catch (error) {
-    console.error('Error desuscribiéndose:', error);
+    //console.error('Error desuscribiéndose:', error);
     return true;
   }
 }
@@ -157,7 +157,7 @@ export async function hasActiveSubscription() {
     const subscription = await registration.pushManager.getSubscription();
     return !!subscription;
   } catch (error) {
-    console.error('Error verificando suscripción:', error);
+    //console.error('Error verificando suscripción:', error);
     return false;
   }
 }

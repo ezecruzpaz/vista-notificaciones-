@@ -15,12 +15,12 @@ export async function requestNotificationPermission() {
  */
 export function showNotification(title, options = {}) {
   if (!('Notification' in window)) {
-    console.warn('Notificaciones no soportadas');
+    //console.warn('Notificaciones no soportadas');
     return;
   }
   
   if (Notification.permission !== 'granted') {
-    console.warn('No hay permiso para mostrar notificaciones');
+    //console.warn('No hay permiso para mostrar notificaciones');
     return;
   }
   
@@ -47,7 +47,7 @@ export function showNotification(title, options = {}) {
   };
   
   notification.onerror = function(error) {
-    console.error('Error mostrando notificación:', error);
+    //console.error('Error mostrando notificación:', error);
   };
   
   return notification;
@@ -67,7 +67,7 @@ export function showNotificationIfHidden(title, options) {
   if (!isPageVisible()) {
     showNotification(title, options);
   } else {
-    console.log('Página visible, no mostrar notificación del sistema');
+   // console.log('Página visible, no mostrar notificación del sistema');
   }
 }
 

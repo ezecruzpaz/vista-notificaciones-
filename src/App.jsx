@@ -45,7 +45,7 @@ export default function App() {
     const websocket = new WebSocket('wss://notifications-mv76.onrender.com');
 
     websocket.onopen = () => {
-      console.log('✅ WebSocket conectado al servidor');
+      //console.log('✅ WebSocket conectado al servidor');
       // Registrar usuario en el servidor
       websocket.send(JSON.stringify({
         type: 'register',
@@ -55,7 +55,7 @@ export default function App() {
     };
 
     websocket.onmessage = (event) => {
-      console.log('📥 Mensaje recibido del servidor:', event.data);
+      //console.log('📥 Mensaje recibido del servidor:', event.data);
 
       try {
         const data = JSON.parse(event.data);
@@ -76,18 +76,18 @@ export default function App() {
           setNotifications(prev => [notif, ...prev]);
         }
       } catch (error) {
-        console.error('Error procesando mensaje WS:', error);
+        //console.error('Error procesando mensaje WS:', error);
       }
     };
 
     websocket.onerror = (error) => {
-      console.error('❌ Error en WebSocket:', error);
-      setNotificationStatus('⚠️ Error de conexión con el servidor');
+      //console.error('❌ Error en WebSocket:', error);
+      setNotificationStatus('Error de conexión con el servidor');
       setIsConnected(false);
     };
 
     websocket.onclose = () => {
-      console.log('🔌 WebSocket desconectado');
+      //console.log('🔌 WebSocket desconectado');
       setIsConnected(false);
     };
 
@@ -145,13 +145,13 @@ export default function App() {
       const websocket = new WebSocket('wss://notifications-mv76.onrender.com');
 
       websocket.onopen = () => {
-        console.log('✅ WebSocket conectado (sesión restaurada)');
+       // console.log('✅ WebSocket conectado (sesión restaurada)');
         websocket.send(JSON.stringify({ type: 'register', username: savedUser }));
         setIsConnected(true);
       };
 
       websocket.onmessage = (event) => {
-        console.log('📥 Mensaje recibido del servidor:', event.data);
+        //console.log('📥 Mensaje recibido del servidor:', event.data);
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'notification') {
@@ -165,17 +165,17 @@ export default function App() {
             setNotifications(prev => [notif, ...prev]);
           }
         } catch (error) {
-          console.error('Error procesando mensaje WS:', error);
+          //console.error('Error procesando mensaje WS:', error);
         }
       };
 
       websocket.onerror = (error) => {
-        console.error('❌ Error en WebSocket:', error);
+        //console.error('❌ Error en WebSocket:', error);
         setIsConnected(false);
       };
 
       websocket.onclose = () => {
-        console.log('🔌 WebSocket desconectado');
+        //console.log('🔌 WebSocket desconectado');
         setIsConnected(false);
       };
 
@@ -188,7 +188,7 @@ export default function App() {
   }, []); // ← ¡Importante: array vacío para ejecutar solo al montar!
   const handleEnableNotifications = async () => {
     if (!('Notification' in window)) {
-      setNotificationStatus('❌ Este navegador no soporta notificaciones.');
+      setNotificationStatus('Este navegador no soporta notificaciones.');
       return;
     }
 
@@ -202,7 +202,7 @@ export default function App() {
     // Actualizamos el estado local de "activado/desactivado"
     if (permission === 'granted') {
       setNotificationsEnabled(true);
-      setNotificationStatus('✅ Notificaciones del sistema activadas');
+      setNotificationStatus('Notificaciones del sistema activadas');
       localStorage.setItem(`user_${currentUser}_notificationsEnabled`, 'true');
 
       // Notificación de prueba
@@ -214,8 +214,8 @@ export default function App() {
       setNotificationsEnabled(false);
       setNotificationStatus(
         permission === 'denied'
-          ? '❌ Las notificaciones están bloqueadas. Haz clic en el 🔒 de la barra de direcciones para habilitarlas.'
-          : 'ℹ️ No se otorgó permiso para notificaciones.'
+          ? ' Las notificaciones están bloqueadas. Haz clic en el  de la barra de direcciones para habilitarlas.'
+          : ' No se otorgó permiso para notificaciones.'
       );
       localStorage.setItem(`user_${currentUser}_notificationsEnabled`, 'false');
     }
@@ -225,7 +225,7 @@ export default function App() {
     if (!window.confirm('¿Deseas desactivar las notificaciones?')) return;
 
     setNotificationsEnabled(false);
-    setNotificationStatus('ℹ️ Notificaciones desactivadas');
+    setNotificationStatus('Notificaciones desactivadas');
     localStorage.setItem(`user_${currentUser}_notificationsEnabled`, 'false');
   };
 
@@ -247,15 +247,15 @@ export default function App() {
       });
 
       if (response.ok) {
-        alert(`✅ Notificación enviada a ${targetUser}`);
+        alert(`Notificación enviada a ${targetUser}`);
         setTargetUser('');
       } else {
         const errorData = await response.json();
-        alert(`❌ Error: ${errorData.error || 'No se pudo enviar'}`);
+        alert(` Error: ${errorData.error || 'No se pudo enviar'}`);
       }
     } catch (error) {
-      console.error('Error al enviar tarea:', error);
-      alert('⚠️ No se pudo conectar con el servidor. ¿Está corriendo en localhost:3000?');
+      //console.error('Error al enviar tarea:', error);
+      alert('No se pudo conectar con el servidor. ¿Está corriendo en localhost:3000?');
     }
   };
 
@@ -335,7 +335,7 @@ export default function App() {
           <section className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
             <div className="mb-4">
               <p className="text-sm text-gray-500">
-                🔕 Notificaciones desactivadas
+                 Notificaciones desactivadas
               </p>
 
               {(() => {
@@ -347,8 +347,8 @@ export default function App() {
                       ? 'bg-red-100 text-red-800'
                       : 'bg-yellow-100 text-yellow-800'
                     }`}>
-                    Permiso: {perm === 'granted' ? '✅ Concedido' :
-                      perm === 'denied' ? '❌ Denegado' : '🟡 Pendiente'}
+                    Permiso: {perm === 'granted' ? ' Concedido' :
+                      perm === 'denied' ? ' Denegado' : ' Pendiente'}
                   </div>
                 );
               })()}
