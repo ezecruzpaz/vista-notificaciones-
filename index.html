@@ -35,19 +35,19 @@
           navigator.serviceWorker
             .register(swUrl, { scope: '/' })
             .then((registration) => {
-              console.log('Service Worker registrado con éxito:', registration.scope);
+              //console.log('Service Worker registrado con éxito:', registration.scope);
 
               // Opcional: escuchar actualizaciones
               registration.addEventListener('updatefound', () => {
-                console.log('Nueva versión del Service Worker detectada');
+                //console.log('Nueva versión del Service Worker detectada');
               });
             })
             .catch((error) => {
-              console.error('Error al registrar el Service Worker:', error);
+              //console.error('Error al registrar el Service Worker:', error);
             });
         });
       } else {
-        console.warn('Service Workers no soportados en este navegador');
+        //console.warn('Service Workers no soportados en este navegador');
       }
 
       // Opcional: mostrar mensaje si el usuario está offline
