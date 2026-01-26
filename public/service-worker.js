@@ -7,7 +7,7 @@ self.addEventListener('install', (event) => {
       return cache.addAll([
         '/service-worker.js'
       ]).catch(err => {
-       // console.error('[SW] Error precacheando:', err);
+        console.error('[SW] Error precacheando:', err);
       });
     })
   );
@@ -47,30 +47,36 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ========================================
-// PUSH NOTIFICATIONS - LO MÁS IMPORTANTE
+// PUSH NOTIFICATIONS - ACTUALIZADO
 // ========================================
 
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push recibido:', event);
+  console.log('[SW] Push recibido:', event.data?.text());
   
   let notificationData = {
     title: '🔔 Nueva notificación',
     body: 'Tienes una nueva actualización',
-    data: {
-      url: '/'
-    }
+    icon: '/favicon.ico',
+    badge: '/favicon.ico'
   };
   
   if (event.data) {
     try {
-      const payload = event.data.json();
+      // Soporta tanto JSON como texto plano
+      const payload = event.data.json ? event.data.json() : { 
+        title: 'Nueva notificación', 
+        body: event.data.text() 
+      };
+      
       notificationData = {
         title: payload.title || notificationData.title,
         body: payload.body || notificationData.body,
+        icon: payload.icon || '/favicon.ico',
+        badge: payload.badge || '/favicon.ico',
         tag: payload.data?.taskId ? `task-${payload.data.taskId}` : `notif-${Date.now()}`,
         vibrate: [200, 100, 200],
         requireInteraction: false,
-        data: payload.data || notificationData.data,
+        data: payload.data || { url: '/' },
         actions: [
           {
             action: 'open',
@@ -83,13 +89,17 @@ self.addEventListener('push', (event) => {
         ]
       };
     } catch (error) {
-     // console.error('[SW] Error parseando datos del push:', error);
+      console.error('[SW] Error parseando datos del push:', error);
+      // Si falla el JSON, usa el texto directamente
+      notificationData.body = event.data.text() || notificationData.body;
     }
   }
   
   event.waitUntil(
     self.registration.showNotification(notificationData.title, {
       body: notificationData.body,
+      icon: notificationData.icon,
+      badge: notificationData.badge,
       tag: notificationData.tag,
       vibrate: notificationData.vibrate,
       requireInteraction: notificationData.requireInteraction,
@@ -100,7 +110,7 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
- // console.log('[SW] Notificación clickeada:', event.action);
+  console.log('[SW] Notificación clickeada:', event.action);
   
   event.notification.close();
   
@@ -115,12 +125,14 @@ self.addEventListener('notificationclick', (event) => {
       type: 'window',
       includeUncontrolled: true
     }).then((clientList) => {
+      // Buscar si la app ya está abierta
       for (const client of clientList) {
-        if ('focus' in client) {
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
           return client.focus();
         }
       }
       
+      // Si no está abierta, abrir nueva ventana
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
@@ -129,17 +141,18 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 self.addEventListener('notificationclose', (event) => {
-  //console.log('[SW] Notificación cerrada:', event.notification.tag);
+  console.log('[SW] Notificación cerrada:', event.notification.tag);
 });
 
+// Evento de sincronización en segundo plano (opcional)
 self.addEventListener('sync', (event) => {
-  //console.log('[SW] Sincronización en segundo plano:', event.tag);
+  console.log('[SW] Sincronización en segundo plano:', event.tag);
   
   if (event.tag === 'sync-notifications') {
     event.waitUntil(
-      //console.log('[SW] Sincronizando...')
+      console.log('[SW] Sincronizando notificaciones pendientes...')
     );
   }
 });
 
-//console.log('[SW] Service Worker cargado correctamente');
+console.log('[SW] Service Worker cargado correctamente');
