@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { showNotification, getNotificationPermissionStatus } from './lib/notifications';
 
 // Clave VAPID pública (debe coincidir con tu backend)
 const VAPID_PUBLIC_KEY = 'BKth85oDWY_n2DyOS6WR62uV_FRs7lR4MGnf_hqkBWylulbQwaJnP4WJI3YF3Zc8VUsE6VUPS2heyjjmShQBufE';
@@ -17,26 +18,6 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-// Función helper para verificar si las notificaciones están realmente activas
-const checkIfNotificationsAreActive = async () => {
-  if (!('serviceWorker' in navigator) || !('Notification' in window)) {
-    return false;
-  }
-
-  if (Notification.permission !== 'granted') {
-    return false;
-  }
-
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-    return !!subscription;
-  } catch (error) {
-    console.error('Error checking notification status:', error);
-    return false;
-  }
-};
-
 export default function App() {
   const [currentUser, setCurrentUser] = useState('');
   const [username, setUsername] = useState('');
@@ -45,6 +26,7 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  //const [notificationPermission, setNotificationPermission] = useState('default');
   const [ws, setWs] = useState(null);
   const [serviceWorkerStatus, setServiceWorkerStatus] = useState('No registrado');
   const [hasPushSubscription, setHasPushSubscription] = useState(false);
@@ -59,8 +41,14 @@ export default function App() {
       const registerSW = async () => {
         try {
           const registration = await navigator.serviceWorker.register('/service-worker.js');
+          //console.log('✅ Service Worker registrado:', registration);
           setServiceWorkerStatus('Registrado');
+          
+          // Verificar si ya hay suscripción
+          const subscription = await registration.pushManager.getSubscription();
+          setHasPushSubscription(!!subscription);
         } catch (error) {
+          //console.error('❌ Error registrando Service Worker:', error);
           setServiceWorkerStatus('Error');
         }
       };
@@ -85,56 +73,64 @@ export default function App() {
     }
   }, [notifications, isLoggedIn, currentUser]);
 
-  const subscribeToPush = async () => {
+const subscribeToPush = async () => {
+  //console.log('🔍 Iniciando suscripción a Web Push...');
+  
+  if (!('serviceWorker' in navigator)) {
+    //console.error('❌ Service Worker no soportado');
+    setNotificationStatus('Service Worker no soportado');
+    return false;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    //console.log('✅ Service Worker listo:', registration);
     
-    if (!('serviceWorker' in navigator)) {
-      setNotificationStatus('Service Worker no soportado');
+    const permission = await Notification.requestPermission();
+    //console.log('🔐 Permiso obtenido:', permission);
+    
+    if (permission !== 'granted') {
+      //console.warn('⚠️ Permiso no concedido');
+      setNotificationStatus('Permiso denegado para notificaciones');
       return false;
     }
 
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      
-      const permission = await Notification.requestPermission();
-      
-      if (permission !== 'granted') {
-        setNotificationStatus('Permiso denegado para notificaciones');
-        return false;
-      }
+    const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+    //console.log('🔑 Clave VAPID convertida');
+    
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey
+    });
+    
+    //console.log('✅ Suscripción creada:', subscription);
 
-      const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-      
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey
-      });
-      
+    // Enviar al backend
+    const response = await fetch('https://notifications-mv76.onrender.com/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: currentUser,
+        subscription: subscription
+      })
+    });
 
-      // Enviar al backend
-      const response = await fetch('https://notifications-mv76.onrender.com/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: currentUser,
-          subscription: subscription
-        })
-      });
-
-      if (response.ok) {
-        setHasPushSubscription(true);
-        setNotificationStatus('✅ Notificaciones Web Push activadas correctamente');
-        return true;
-      } else {
-        const errorText = await response.text();
-        throw new Error(`Error ${response.status}: ${errorText}`);
-      }
-    } catch (error) {
-      setNotificationStatus(`Error: ${error.message}`);
-      return false;
+    if (response.ok) {
+      //console.log('✅ Suscripción guardada en el servidor');
+      setHasPushSubscription(true);
+      return true;
+    } else {
+      const errorText = await response.text();
+     //console.error('❌ Error del servidor:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
     }
-  };
-
-  const handleLogin = async () => {
+  } catch (error) {
+    //console.error('💥 Error completo en suscripción:', error);
+    setNotificationStatus(`Error: ${error.message}`);
+    return false;
+  }
+};
+  const handleLogin = () => {
     if (!username.trim()) {
       alert('Por favor ingresa un nombre de usuario');
       return;
@@ -148,7 +144,7 @@ export default function App() {
       setIsConnected(true);
     };
 
-    // Solo actualizar el historial, NO mostrar notificaciones del navegador
+   // Solo actualizar el historial, NO mostrar notificaciones del navegador
     websocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -158,6 +154,7 @@ export default function App() {
           setNotifications(prev => [notif, ...prev]);
         }
       } catch (error) {
+        //console.error('Error procesando mensaje WS:', error);
       }
     };
 
@@ -174,10 +171,8 @@ export default function App() {
     setCurrentUser(username);
     setIsLoggedIn(true);
 
-    // Verificar estado real de las notificaciones
-    const isActive = await checkIfNotificationsAreActive();
-    setNotificationsEnabled(isActive);
-    setHasPushSubscription(isActive);
+    const savedEnabled = localStorage.getItem(`user_${username}_notificationsEnabled`) === 'true';
+    setNotificationsEnabled(savedEnabled);
   };
 
   const handleLogout = () => {
@@ -211,21 +206,26 @@ export default function App() {
       setCurrentUser(savedUser);
       setIsLoggedIn(true);
 
+      const savedEnabled = localStorage.getItem(`user_${savedUser}_notificationsEnabled`) === 'true';
+      setNotificationsEnabled(savedEnabled);
+
       const websocket = new WebSocket('wss://notifications-mv76.onrender.com');
       websocket.onopen = () => {
         websocket.send(JSON.stringify({ type: 'register', username: savedUser }));
         setIsConnected(true);
       };
 
+       // Solo actualizar el historial, NO mostrar notificaciones del navegador
       websocket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'notification') {
             const notif = data.notification;
+            // Solo agregar al historial, Web Push se encarga de las notificaciones
             setNotifications(prev => [notif, ...prev]);
           }
         } catch (error) {
-          console.error('Error procesando mensaje WS:', error);
+         //console.error('Error procesando mensaje WS:', error);
         }
       };
 
@@ -235,20 +235,10 @@ export default function App() {
 
       const savedNotifs = JSON.parse(localStorage.getItem(`user_${savedUser}_notifications`) || '[]');
       setNotifications(savedNotifs);
-
-      // Verificar estado real de notificaciones
-      const checkStatus = async () => {
-        const isActive = await checkIfNotificationsAreActive();
-        setNotificationsEnabled(isActive);
-        setHasPushSubscription(isActive);
-      };
-      
-      checkStatus();
     }
   }, []);
 
   const handleEnableNotifications = async () => {
-    
     if (!('Notification' in window)) {
       setNotificationStatus('Este navegador no soporta notificaciones.');
       return;
@@ -259,16 +249,15 @@ export default function App() {
       permission = await Notification.requestPermission();
     }
 
+   if (permission === 'granted') {
+      setNotificationsEnabled(true);
+      localStorage.setItem(`user_${currentUser}_notificationsEnabled`, 'true');
 
-    if (permission === 'granted') {
       // Suscribirse a Web Push
       const subscribed = await subscribeToPush();
       if (subscribed) {
-        setNotificationsEnabled(true);
-        localStorage.setItem(`user_${currentUser}_notificationsEnabled`, 'true');
-        
-        new Notification('🎉 Notificaciones Activadas', {
-          body: 'Recibirás alertas incluso cuando cierres esta página.',
+        new Notification('Notificaciones Activadas', {
+          body: 'Recibirás alertas incluso fuera de la página.',
           icon: '/favicon.ico'
         });
       }
@@ -292,8 +281,10 @@ export default function App() {
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
         await subscription.unsubscribe();
+        //console.log('✅ Desuscrito de Web Push');
       }
     } catch (error) {
+      //console.error('Error al desuscribirse:', error);
     }
     
     setNotificationsEnabled(false);
@@ -320,14 +311,14 @@ export default function App() {
       });
 
       if (response.ok) {
-        alert(` Notificación enviada a ${targetUser}`);
+        alert(`✅ Notificación enviada a ${targetUser}`);
         setTargetUser('');
       } else {
         const errorData = await response.json();
-        alert(` Error: ${errorData.error || 'No se pudo enviar'}`);
+        alert(`❌ Error: ${errorData.error || 'No se pudo enviar'}`);
       }
     } catch (error) {
-      alert(' No se pudo conectar con el servidor.');
+      alert('❌ No se pudo conectar con el servidor.');
     }
   };
 
@@ -338,11 +329,11 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
-        <div className="bg-white border border-gray-200 rounded-xl shadow-xl max-w-md w-full p-8 text-center">
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
+        <div className="bg-white border border-gray-200 rounded-xl shadow-lg max-w-md w-full p-8 text-center">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">Notificaciones</h1>
-            <p className="text-gray-500 mt-2">Sistema de alertas en tiempo real</p>
+            <p className="text-gray-500 mt-2">Inicia sesión para continuar</p>
           </div>
 
           <div className="space-y-4">
@@ -364,8 +355,8 @@ export default function App() {
           </div>
 
           <div className="mt-6 pt-4 border-t border-gray-200">
-            <p className="text-xs text-gray-400">
-              Recibe notificaciones incluso con la app cerrada
+            <p className="text-sm text-gray-400">
+              Sistema de notificaciones en tiempo real
             </p>
           </div>
         </div>
@@ -374,17 +365,16 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+    <div className="min-h-screen bg-white p-6">
       <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Header */}
-        <header className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+        <header className="bg-white border-b border-gray-200 py-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Hola, <span className="text-blue-600">{currentUser}</span> 
+              <h1 className="text-xl font-bold text-gray-900">
+                Hola, <span className="text-blue-600">{currentUser}</span>
               </h1>
-              <p className="text-sm text-gray-500 mt-1">Sistema de notificaciones Web Push</p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -394,35 +384,47 @@ export default function App() {
 
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-1 px-1 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium transition-colors"
+                aria-label="Cerrar sesión"
               >
-                Cerrar Sesión
+                <span>Cerrar Sesión</span>
               </button>
             </div>
           </div>
         </header>
-        {/* Panel de control de notificaciones - SOLO si NO están activas */}
+
+        {/* Estado del sistema */}
+        <section className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+          <h3 className="text-lg font-bold text-gray-900 mb-3">📊 Estado del Sistema</h3>
+          <div className="space-y-2 text-sm">
+            <p className={serviceWorkerStatus === 'Registrado' ? 'text-green-600' : 'text-red-600'}>
+              • Service Worker: {serviceWorkerStatus}
+            </p>
+            <p className={hasPushSubscription ? 'text-green-600' : 'text-red-600'}>
+              • Suscripción Push: {hasPushSubscription ? '✅ Activa' : '❌ Inactiva'}
+            </p>
+            <p className={Notification.permission === 'granted' ? 'text-green-600' : 'text-red-600'}>
+              • Permisos: {Notification.permission === 'granted' ? '✅ Concedido' : 
+                            Notification.permission === 'denied' ? '❌ Denegado' : '🟡 Pendiente'}
+            </p>
+          </div>
+        </section>
+
+        {/* Panel de notificaciones */}
         {!notificationsEnabled && (
           <section className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4"> Control de Notificaciones</h3>
-            
-            <div className="space-y-4">
-              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
-                <p className="text-yellow-800 text-sm font-medium">
-                   Las notificaciones están desactivadas
-                </p>
-                <p className="text-yellow-700 text-xs mt-1">
-                  Actívalas para recibir alertas incluso cuando cierres la página
-                </p>
-              </div>
-
-              <button
-                onClick={handleEnableNotifications}
-                className="w-full px-6 py-3 bg-green-500 text-white rounded-lg font-semibold text-base hover:bg-green-600 transition-colors"
-              >
-                 Activar Notificaciones Web Push
-              </button>
+            <div className="mb-4">
+              <p className="text-sm text-gray-500">
+                🔕 Notificaciones desactivadas
+              </p>
             </div>
+
+            <button
+              onClick={handleEnableNotifications}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg font-semibold text-base hover:bg-green-600 transition-colors"
+            >
+              Activar Notificaciones
+            </button>
 
             {notificationStatus && (
               <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
@@ -435,8 +437,8 @@ export default function App() {
         {/* Simulador */}
         <section className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
           <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-900"> Simulador de Asignaciones</h2>
-            <p className="text-sm text-gray-500">Envía notificaciones de prueba a otros usuarios</p>
+            <h2 className="text-xl font-bold text-gray-900">Simulador de Asignaciones</h2>
+            <p className="text-sm text-gray-500">Envía notificaciones de prueba</p>
           </div>
 
           <div className="space-y-4">
@@ -449,7 +451,7 @@ export default function App() {
                 value={targetUser}
                 onChange={(e) => setTargetUser(e.target.value)}
                 placeholder="Nombre del usuario"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -461,7 +463,7 @@ export default function App() {
                 type="text"
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -473,7 +475,7 @@ export default function App() {
                 value={taskDescription}
                 onChange={(e) => setTaskDescription(e.target.value)}
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
             </div>
 
@@ -481,12 +483,10 @@ export default function App() {
               onClick={handleSendTask}
               className="w-full py-3 bg-blue-500 text-white rounded-lg font-semibold text-lg hover:bg-blue-600 transition-colors"
             >
-               Enviar Notificación
+              Enviar Notificación
             </button>
           </div>
         </section>
-
-       
       </div>
     </div>
   );

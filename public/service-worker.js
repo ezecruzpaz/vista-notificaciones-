@@ -7,7 +7,7 @@ self.addEventListener('install', (event) => {
       return cache.addAll([
         '/service-worker.js'
       ]).catch(err => {
-        console.error('[SW] Error precacheando:', err);
+        //console.error('[SW] Error precacheando:', err);
       });
     })
   );
@@ -46,12 +46,12 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ========================================
+
 // PUSH NOTIFICATIONS - ACTUALIZADO
-// ========================================
+
 
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push recibido:', event.data?.text());
+  //console.log('[SW] Push recibido:', event.data?.text());
   
   let notificationData = {
     title: '🔔 Nueva notificación',
@@ -89,7 +89,7 @@ self.addEventListener('push', (event) => {
         ]
       };
     } catch (error) {
-      console.error('[SW] Error parseando datos del push:', error);
+      //console.error('[SW] Error parseando datos del push:', error);
       // Si falla el JSON, usa el texto directamente
       notificationData.body = event.data.text() || notificationData.body;
     }
@@ -110,7 +110,7 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notificación clickeada:', event.action);
+  //console.log('[SW] Notificación clickeada:', event.action);
   
   event.notification.close();
   
@@ -141,18 +141,18 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 self.addEventListener('notificationclose', (event) => {
-  console.log('[SW] Notificación cerrada:', event.notification.tag);
+  //console.log('[SW] Notificación cerrada:', event.notification.tag);
 });
 
 // Evento de sincronización en segundo plano (opcional)
 self.addEventListener('sync', (event) => {
-  console.log('[SW] Sincronización en segundo plano:', event.tag);
+ //console.log('[SW] Sincronización en segundo plano:', event.tag);
   
   if (event.tag === 'sync-notifications') {
     event.waitUntil(
-      console.log('[SW] Sincronizando notificaciones pendientes...')
+      //console.log('[SW] Sincronizando notificaciones pendientes...')
     );
   }
 });
 
-console.log('[SW] Service Worker cargado correctamente');
+//console.log('[SW] Service Worker cargado correctamente');
