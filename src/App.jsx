@@ -315,32 +315,6 @@ export default function App() {
           isConnected={isConnected}
           onLogout={handleLogout}
         />
-
-        {/* Estado del sistema */}
-        <section className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-3"> Estado del Sistema</h3>
-          <div className="space-y-2 text-sm">
-            <p className={serviceWorkerStatus === 'Registrado' ? 'text-green-600' : 'text-red-600'}>
-              • Service Worker: {serviceWorkerStatus}
-            </p>
-            <p className={hasPushSubscription ? 'text-green-600' : 'text-red-600'}>
-              • Suscripción Push: {hasPushSubscription ? '✅ Activa' : '❌ Inactiva'}
-            </p>
-            <p
-              className={
-                Notification.permission === 'granted'
-                  ? 'text-green-600'
-                  : Notification.permission === 'denied'
-                  ? 'text-red-600'
-                  : 'text-yellow-600'
-              }
-            >
-              • Permisos: {Notification.permission === 'granted' ? '✅ Concedido' : 
-                            Notification.permission === 'denied' ? '❌ Denegado' : '🟡 Pendiente'}
-            </p>
-          </div>
-        </section>
-
         {/* Toggle de notificaciones */}
         <section className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
           <NotificationToggle
