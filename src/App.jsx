@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { showNotification, getNotificationPermissionStatus } from './lib/notifications';
 
+import Login from './components/Login';
+import Header from './components/Header';
+import NotificationToggle from './components/NotificationToggle';
+import Simulator from './components/Simulator';
+
 // Clave VAPID pública (debe coincidir con tu backend)
 const VAPID_PUBLIC_KEY = 'BKth85oDWY_n2DyOS6WR62uV_FRs7lR4MGnf_hqkBWylulbQwaJnP4WJI3YF3Zc8VUsE6VUPS2heyjjmShQBufE';
 
@@ -26,29 +31,27 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  //const [notificationPermission, setNotificationPermission] = useState('default');
   const [ws, setWs] = useState(null);
   const [serviceWorkerStatus, setServiceWorkerStatus] = useState('No registrado');
   const [hasPushSubscription, setHasPushSubscription] = useState(false);
 
   const [targetUser, setTargetUser] = useState('');
   const [taskTitle, setTaskTitle] = useState('Nueva tarea asignada');
-  const [taskDescription, setTaskDescription] = useState('Tienes una nueva tarea pendiente que requiere tu atención.');
+  const [taskDescription, setTaskDescription] = useState(
+    'Tienes una nueva tarea pendiente que requiere tu atención.'
+  );
 
-  // Registrar Service Worker al cargar la app
+  // useEffects y funciones de lógica (se mantienen igual)
+
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       const registerSW = async () => {
         try {
           const registration = await navigator.serviceWorker.register('/service-worker.js');
-          //console.log('✅ Service Worker registrado:', registration);
           setServiceWorkerStatus('Registrado');
-          
-          // Verificar si ya hay suscripción
           const subscription = await registration.pushManager.getSubscription();
           setHasPushSubscription(!!subscription);
         } catch (error) {
-          //console.error('❌ Error registrando Service Worker:', error);
           setServiceWorkerStatus('Error');
         }
       };
@@ -56,7 +59,6 @@ export default function App() {
     }
   }, []);
 
-  // Cargar notificaciones guardadas
   useEffect(() => {
     if (isLoggedIn) {
       const key = `user_${currentUser}_notifications`;
@@ -65,7 +67,6 @@ export default function App() {
     }
   }, [isLoggedIn, currentUser]);
 
-  // Guardar notificaciones en localStorage
   useEffect(() => {
     if (isLoggedIn) {
       const key = `user_${currentUser}_notifications`;
@@ -73,63 +74,49 @@ export default function App() {
     }
   }, [notifications, isLoggedIn, currentUser]);
 
-const subscribeToPush = async () => {
-  //console.log('🔍 Iniciando suscripción a Web Push...');
-  
-  if (!('serviceWorker' in navigator)) {
-    //console.error('❌ Service Worker no soportado');
-    setNotificationStatus('Service Worker no soportado');
-    return false;
-  }
-
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    //console.log('✅ Service Worker listo:', registration);
-    
-    const permission = await Notification.requestPermission();
-    //console.log('🔐 Permiso obtenido:', permission);
-    
-    if (permission !== 'granted') {
-      //console.warn('⚠️ Permiso no concedido');
-      setNotificationStatus('Permiso denegado para notificaciones');
+  const subscribeToPush = async () => {
+    if (!('serviceWorker' in navigator)) {
+      setNotificationStatus('Service Worker no soportado');
       return false;
     }
 
-    const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-    //console.log('🔑 Clave VAPID convertida');
-    
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey
-    });
-    
-    //console.log('✅ Suscripción creada:', subscription);
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const permission = await Notification.requestPermission();
 
-    // Enviar al backend
-    const response = await fetch('https://notifications-mv76.onrender.com/api/subscribe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: currentUser,
-        subscription: subscription
-      })
-    });
+      if (permission !== 'granted') {
+        setNotificationStatus('Permiso denegado para notificaciones');
+        return false;
+      }
 
-    if (response.ok) {
-      //console.log('✅ Suscripción guardada en el servidor');
-      setHasPushSubscription(true);
-      return true;
-    } else {
-      const errorText = await response.text();
-     //console.error('❌ Error del servidor:', errorText);
-      throw new Error(`Error ${response.status}: ${errorText}`);
+      const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey
+      });
+
+      const response = await fetch('https://notifications-mv76.onrender.com/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: currentUser,
+          subscription: subscription
+        })
+      });
+
+      if (response.ok) {
+        setHasPushSubscription(true);
+        return true;
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+    } catch (error) {
+      setNotificationStatus(`Error: ${error.message}`);
+      return false;
     }
-  } catch (error) {
-    //console.error('💥 Error completo en suscripción:', error);
-    setNotificationStatus(`Error: ${error.message}`);
-    return false;
-  }
-};
+  };
+
   const handleLogin = () => {
     if (!username.trim()) {
       alert('Por favor ingresa un nombre de usuario');
@@ -140,32 +127,28 @@ const subscribeToPush = async () => {
     const websocket = new WebSocket('wss://notifications-mv76.onrender.com');
 
     websocket.onopen = () => {
-      websocket.send(JSON.stringify({ type: 'register', username: username }));
+      websocket.send(JSON.stringify({ type: 'register', username }));
       setIsConnected(true);
     };
 
-   // Solo actualizar el historial, NO mostrar notificaciones del navegador
     websocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'notification') {
           const notif = data.notification;
-          // Solo agregar al historial, Web Push se encarga de las notificaciones
-          setNotifications(prev => [notif, ...prev]);
+          setNotifications((prev) => [notif, ...prev]);
         }
       } catch (error) {
-        //console.error('Error procesando mensaje WS:', error);
+        console.error('Error procesando mensaje WS:', error);
       }
     };
 
-    websocket.onerror = (error) => {
+    websocket.onerror = () => {
       setNotificationStatus('Error de conexión con el servidor');
       setIsConnected(false);
     };
 
-    websocket.onclose = () => {
-      setIsConnected(false);
-    };
+    websocket.onclose = () => setIsConnected(false);
 
     setWs(websocket);
     setCurrentUser(username);
@@ -180,7 +163,6 @@ const subscribeToPush = async () => {
 
     if (ws) ws.close();
 
-    // Limpiar localStorage
     localStorage.removeItem('currentUser');
     if (currentUser) {
       localStorage.removeItem(`user_${currentUser}_notifications`);
@@ -198,7 +180,6 @@ const subscribeToPush = async () => {
     setHasPushSubscription(false);
   };
 
-  // Auto-login
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
@@ -215,17 +196,15 @@ const subscribeToPush = async () => {
         setIsConnected(true);
       };
 
-       // Solo actualizar el historial, NO mostrar notificaciones del navegador
       websocket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'notification') {
             const notif = data.notification;
-            // Solo agregar al historial, Web Push se encarga de las notificaciones
-            setNotifications(prev => [notif, ...prev]);
+            setNotifications((prev) => [notif, ...prev]);
           }
         } catch (error) {
-         //console.error('Error procesando mensaje WS:', error);
+          console.error('Error procesando mensaje WS:', error);
         }
       };
 
@@ -249,11 +228,10 @@ const subscribeToPush = async () => {
       permission = await Notification.requestPermission();
     }
 
-   if (permission === 'granted') {
+    if (permission === 'granted') {
       setNotificationsEnabled(true);
       localStorage.setItem(`user_${currentUser}_notificationsEnabled`, 'true');
 
-      // Suscribirse a Web Push
       const subscribed = await subscribeToPush();
       if (subscribed) {
         new Notification('Notificaciones Activadas', {
@@ -274,19 +252,17 @@ const subscribeToPush = async () => {
 
   const handleDisableNotifications = async () => {
     if (!window.confirm('¿Deseas desactivar las notificaciones?')) return;
-    
-    // Desuscribir del servicio push
+
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
         await subscription.unsubscribe();
-        //console.log('✅ Desuscrito de Web Push');
       }
     } catch (error) {
-      //console.error('Error al desuscribirse:', error);
+      console.error('Error al desuscribirse:', error);
     }
-    
+
     setNotificationsEnabled(false);
     setHasPushSubscription(false);
     setNotificationStatus('Notificaciones desactivadas');
@@ -304,9 +280,9 @@ const subscribeToPush = async () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          targetUser: targetUser,
-          taskTitle: taskTitle,
-          taskDescription: taskDescription
+          targetUser,
+          taskTitle,
+          taskDescription
         })
       });
 
@@ -326,76 +302,23 @@ const subscribeToPush = async () => {
     if (!window.confirm('¿Eliminar todas las notificaciones?')) return;
     setNotifications([]);
   };
-
+  // RENDER
   if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-6">
-        <div className="bg-white border border-gray-200 rounded-xl shadow-lg max-w-md w-full p-8 text-center">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Notificaciones</h1>
-            <p className="text-gray-500 mt-2">Inicia sesión para continuar</p>
-          </div>
-
-          <div className="space-y-4">
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-              placeholder="Nombre de usuario"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-
-            <button
-              onClick={handleLogin}
-              className="w-full py-3 bg-blue-500 text-white rounded-lg font-semibold text-lg hover:bg-blue-600 transition-colors"
-            >
-              Iniciar Sesión
-            </button>
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-400">
-              Sistema de notificaciones en tiempo real
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <Login username={username} setUsername={setUsername} onLogin={handleLogin} />;
   }
 
   return (
     <div className="min-h-screen bg-white p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
-                Hola, <span className="text-blue-600">{currentUser}</span>
-              </h1>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className={`px-3 py-1 rounded-full text-xs font-semibold ${isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                {isConnected ? '● Conectado' : '● Desconectado'}
-              </div>
-
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1 px-1 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium transition-colors"
-                aria-label="Cerrar sesión"
-              >
-                <span>Cerrar Sesión</span>
-              </button>
-            </div>
-          </div>
-        </header>
+        <Header
+          currentUser={currentUser}
+          isConnected={isConnected}
+          onLogout={handleLogout}
+        />
 
         {/* Estado del sistema */}
         <section className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-3">📊 Estado del Sistema</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-3"> Estado del Sistema</h3>
           <div className="space-y-2 text-sm">
             <p className={serviceWorkerStatus === 'Registrado' ? 'text-green-600' : 'text-red-600'}>
               • Service Worker: {serviceWorkerStatus}
@@ -403,90 +326,42 @@ const subscribeToPush = async () => {
             <p className={hasPushSubscription ? 'text-green-600' : 'text-red-600'}>
               • Suscripción Push: {hasPushSubscription ? '✅ Activa' : '❌ Inactiva'}
             </p>
-            <p className={Notification.permission === 'granted' ? 'text-green-600' : 'text-red-600'}>
+            <p
+              className={
+                Notification.permission === 'granted'
+                  ? 'text-green-600'
+                  : Notification.permission === 'denied'
+                  ? 'text-red-600'
+                  : 'text-yellow-600'
+              }
+            >
               • Permisos: {Notification.permission === 'granted' ? '✅ Concedido' : 
                             Notification.permission === 'denied' ? '❌ Denegado' : '🟡 Pendiente'}
             </p>
           </div>
         </section>
 
-        {/* Panel de notificaciones */}
-        {!notificationsEnabled && (
-          <section className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-            <div className="mb-4">
-              <p className="text-sm text-gray-500">
-                🔕 Notificaciones desactivadas
-              </p>
-            </div>
-
-            <button
-              onClick={handleEnableNotifications}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg font-semibold text-base hover:bg-green-600 transition-colors"
-            >
-              Activar Notificaciones
-            </button>
-
-            {notificationStatus && (
-              <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-                <p className="text-blue-800 text-sm font-medium">{notificationStatus}</p>
-              </div>
-            )}
-          </section>
-        )}
+        {/* Toggle de notificaciones */}
+        <section className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+          <NotificationToggle
+            notificationsEnabled={notificationsEnabled}
+            notificationStatus={notificationStatus}
+            onEnable={handleEnableNotifications}
+            onDisable={handleDisableNotifications}
+          />
+        </section>
 
         {/* Simulador */}
-        <section className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Simulador de Asignaciones</h2>
-            <p className="text-sm text-gray-500">Envía notificaciones de prueba</p>
-          </div>
+        <Simulator
+          targetUser={targetUser}
+          setTargetUser={setTargetUser}
+          taskTitle={taskTitle}
+          setTaskTitle={setTaskTitle}
+          taskDescription={taskDescription}
+          setTaskDescription={setTaskDescription}
+          onSendTask={handleSendTask}
+        />
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
-                Usuario destino
-              </label>
-              <input
-                type="text"
-                value={targetUser}
-                onChange={(e) => setTargetUser(e.target.value)}
-                placeholder="Nombre del usuario"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
-                Título de la tarea
-              </label>
-              <input
-                type="text"
-                value={taskTitle}
-                onChange={(e) => setTaskTitle(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
-                Descripción
-              </label>
-              <textarea
-                value={taskDescription}
-                onChange={(e) => setTaskDescription(e.target.value)}
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-            </div>
-
-            <button
-              onClick={handleSendTask}
-              className="w-full py-3 bg-blue-500 text-white rounded-lg font-semibold text-lg hover:bg-blue-600 transition-colors"
-            >
-              Enviar Notificación
-            </button>
-          </div>
-        </section>
       </div>
     </div>
   );
